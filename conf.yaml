@@ -4,3 +4,33 @@
 Longitude: 5.7106521
 Latitude: 43.9346298
 Altitude: 650
+
+# wifi-ASTRO-30
+# C9xxgwz_
+
+# Aller sur https://search.staros-projects.org/#
+# Et taper "Melchiors list" ensuite chercher plus bas dans la liste des etoiles
+
+# Workflow for proper calibration with lamp is explained here: https://solex.astrosurf.com/specinti4_fr.html
+# --------------------------------------------------------
+# Longueurs d'onde des raies étalon
+# -------------------------------------------------------
+wavelength: [3948.98, 4200.67, 4510.73, 4764.87, 5852.49, 6143.06, 6402.25, 6677.28, 6965.43, 7067.22, 7272.94, 7503.87, 7635.11]
+
+# -------------------------------------------------------------------------
+# Coordonnées en pixel des raies dans l'image
+# -------------------------------------------------------------------------
+
+line_pos: [843, 970, 1117, 1245, 1773, 1920, 2053, 2191, 2345, 2397, 2504, 2631, 2700]
+
+
+#formule
+S*G / (Dˆ2*T*rho)
+S (signal in ADU)
+D in cm
+T in second
+rho in Angstoem per pixel
+G in e-/ADU
+
+D = 20.4
+T =
