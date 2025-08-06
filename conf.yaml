@@ -5,11 +5,12 @@ Longitude: 5.7106521
 Latitude: 43.9346298
 Altitude: 650
 
-# wifi-ASTRO-30
-# C9xxgwz_
-
 # Aller sur https://search.staros-projects.org/#
 # Et taper "Melchiors list" ensuite chercher plus bas dans la liste des etoiles
+
+# Preparation stage: https://youtu.be/sHAjYOVayJw
+# Nova ser: https://www.spectro-aras.com/forum/viewtopic.php?t=3185
+# Resource center: https://www.notion.so/guillaumebertrand/OHP-2025-centre-de-ressources-20e6feb96489804f9feffec80c415d9d?source=copy_link
 
 # Workflow for proper calibration with lamp is explained here: https://solex.astrosurf.com/specinti4_fr.html
 # --------------------------------------------------------
@@ -29,8 +30,70 @@ S*G / (Dˆ2*T*rho)
 S (signal in ADU)
 D in cm
 T in second
-rho in Angstoem per pixel
+rho in Angstroem per pixel
 G in e-/ADU
 
 D = 20.4
 T =
+
+
+
+Info Calib rep instrumentale:
+
+  Vous avez des images de calibration de type "flat" basées sur une lampe tungstène. Ces images sont cruciales pour le prétraitement radiométrique de vos spectres. Elles ne sont pas directement le fichier _rep.fits, mais elles sont utilisées dans une étape préliminaire pour nettoyer le spectre d'une étoile de référence, qui servira ensuite au calcul de la réponse instrumentale.
+  Voici les étapes détaillées pour créer et utiliser le fichier _rep.fits à l'aide de vos images de flat à la lampe tungstène:
+  1. Comprendre la Réponse Instrumentale
+  La réponse instrumentale est une courbe qui décrit comment votre instrument modifie le signal lumineux qu'il reçoit. L'objectif est d'obtenir un spectre "plat", c'est-à-dire un spectre qui ressemble à celui que l'on verrait hors atmosphère et sans les biais de l'instrument. Le calcul de cette réponse s'effectue en divisant le spectre observé d'une étoile de référence (déjà corrigé des effets atmosphériques et des biais du détecteur) par le spectre "vrai" de cette même étoile, tel qu'il est connu dans les catalogues professionnels (comme Melchiors ou UVES).
+  2. Étapes pour créer le fichier
+  La création du fichier de réponse instrumentale implique plusieurs opérations:
+  • Acquisition d'un spectre d'étoile de référence:
+    ◦ Vous devez avoir observé le spectre d'une étoile de référence dont le spectre "vrai" est connu dans un catalogue. Des exemples incluent Altair, Véga, 10 Lacertae, ou des étoiles de type spectral A ou B.
+    ◦ Il est recommandé de choisir une étoile relativement brillante pour faciliter l'observation et obtenir un bon rapport signal sur bruit.
+  • Traitement préliminaire du spectre de l'étoile de référence (correction des biais du détecteur):
+    ◦ Avant de calculer la réponse instrumentale, le spectre observé de votre étoile de référence doit être prétraité pour corriger les biais du détecteur. Cela inclut la soustraction de l'offset, du dark, et surtout la correction du flat-field.
+    ◦ Vos images de flat à la lampe tungstène (tung- images) sont utilisées pour cette correction du flat-field.
+    ◦ Pour que le flat-field soit appliqué correctement, vous devez indiquer le nom de vos images flat (ex: tung- et leur nombre, ou _flat si déjà prétraité) dans le fichier d'observation.
+    ◦ Le paramètre planck doit être utilisé dans le fichier de configuration pour tenir compte de la température de couleur de votre lampe tungstène (ex:
+      planck: 2900), afin d'obtenir une réponse plus proche de celle attendue.
+    ◦ Si vos images flat-field ont été prises hors télescope (sur table), il est possible qu'un décalage (shift) soit nécessaire pour compenser les flexions mécaniques. Vous pouvez évaluer ce décalage (en pixels) et le spécifier via le paramètre Liste décalage flat dans l'onglet "Mode avancé" du fichier d'observation (ou flat_shift_x dans l'ancien format).
+    ◦ Assurez-vous également que la correction de la transmission atmosphérique est appliquée à votre spectre observé (paramètre corr_atmo avec la valeur de l'AOD, et simbad ou les coordonnées de l'astre renseignées).
+  • Préparation du spectre de référence (catalogue):
+    ◦ Téléchargez le spectre "vrai" de votre étoile de référence depuis une base de données (par exemple, Melchiors, MILES, ou UVES pour Altair).
+    ◦ Si la résolution spectrale du spectre de référence est supérieure à celle de votre instrument, vous devrez la dégrader pour qu'elle corresponde à votre résolution. Ceci peut être fait avec la fonction _pro_gauss dans le fichier de configuration, en indiquant la largeur du filtre gaussien (ex:
+      _pro_gauss: [ m_HD207330, 3, tempo1 ]).
+  • Calcul de la réponse instrumentale (la division):
+    ◦ Utilisez la fonction _pro_div pour diviser le spectre observé de votre étoile de référence (prétraité, corrigé de l'atmosphère et de la température de couleur de la lampe flat) par son spectre dégradé du catalogue.
+    ◦ Exemple dans le fichier de configuration:
+      _pro_div: [ spectre_observe_corrige_atmo, spectre_reference_degrade, nom_resultat_temporaire ].
+  • Lissage et raffinement de la réponse:
+    ◦ Le résultat de la division contiendra du bruit et des résidus (notamment des raies telluriques si elles ne sont pas absentes du spectre de référence). Vous devez lisser cette courbe pour obtenir une réponse instrumentale "monotone et lisse".
+    ◦ Vous pouvez utiliser des fonctions comme _pro_clean (pour enlever des zones spécifiques comme les raies O2 ou telluriques résiduelles, ex:
+      _pro_clean: [ tmp1, 6850, 6990, tmp1 ]) et _pro_blur (lissage général, ex:
+                                              _pro_blur: [ tempo2, 1000, tempo3 ]).
+    ◦ Une autre option est _pro_fit (ou _pro_fit2/_pro_fit3) pour ajuster un polynôme sur des points du continuum, en évitant les raies telluriques.
+    ◦ Il est souvent recommandé de normaliser la réponse à l'unité (_pro_norm), par exemple _pro_norm: [ tempo3, 6400, 6420, _rep ].
+    ◦ Vous pouvez enchaîner ces fonctions en les encadrant par _begin:
+      et _end: dans votre fichier de configuration.
+  • Sauvegarde de la réponse instrumentale:
+    ◦ Le fichier résultant doit être sauvegardé sous un nom identifiable, souvent _rep (nom réservé par SpecINTI). Il peut être suffixé par le numéro de l'observation ou une date pour traçabilité (ex: _rep374).
+  3. Utilisation de l'onglet "Rep Instru" dans SpecINTI Editor
+  L'interface graphique de SpecINTI Editor simplifie considérablement ces étapes grâce à l'onglet "Rep. Instru":
+  1. Charger les profils: Dans cet onglet, chargez le profil observé de votre objet (Fichier Obj) et le profil théorique de ce même objet (via Staros search web ou Ouvrir pour un fichier local).
+  2. Ajuster le décalage: L'interface affichera automatiquement la division. Si nécessaire, ajustez un éventuel décalage en longueur d'onde.
+  3. Valider la division: Cliquez sur le bouton "Valider".
+  4. Construire la courbe de réponse:
+    ◦ Mode HiRes: Placez des points sur la courbe de division en évitant les raies spectrales avec la souris. Cliquez ensuite sur "Filtrer".
+    ◦ Mode LowRes: Le lissage est généralement automatique ou avec des paramètres prédéfinis.
+  5. Sauvegarder: Cliquez sur le bouton "Enregistrer" pour sauvegarder votre réponse instrumentale, par exemple sous le nom _reponse_vega.
+  4. Application de la Réponse Instrumentale
+  Une fois que le fichier _rep.fits (ou son nom choisi, par exemple _reponse_vega) est créé et enregistré dans votre dossier de travail, vous devez l'indiquer à SpecINTI dans votre fichier de configuration.
+  1. Ouvrez le fichier de configuration que vous utilisez pour le traitement de vos spectres (ex: conf_starex2400_mode0_demo3.yaml).
+  2. Repérez la ligne instrumental_response:.
+  3. Décommentez cette ligne (enlevez le # si présent) et assurez-vous que le nom du fichier de réponse instrumentale correspond au nom que vous avez enregistré, par exemple :
+  4. ou
+  5. .
+  6. Relancez le traitement de vos données avec ce fichier de configuration modifié. SpecINTI appliquera alors la correction de la réponse instrumentale, éliminant ainsi les distorsions liées à votre équipement.
+  Recommandations importantes
+  • Une fois calculée, la réponse instrumentale est une constante de votre instrument. Sauf si vous modifiez significativement votre spectrographe, vous n'aurez pas besoin de la recalculer fréquemment.
+  • Vous pouvez copier les fichiers maîtres (_offset, _dark, _flat, et _rep) d'un répertoire d'observation à un autre pour les réutiliser sans les recalculer, ce qui fait gagner beaucoup de temps.
+  • SpecINTI est conçu pour automatiser une grande partie du processus. L'effort initial de configuration et de calcul de la réponse instrumentale est un investissement qui rend les traitements futurs beaucoup plus rapides et fiables.

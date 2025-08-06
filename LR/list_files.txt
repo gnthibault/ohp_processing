@@ -1,0 +1,16 @@
+ls /Users/gnthibault/Documents/DATA_OHP/Alpy600/
+_10lac_20250730_041_2D.fits          10lac_argonneon-17.fits              10lac_argonneon-30.fits              10lac-8.fits                         flat-12.fits                         flat-26.fits
+_10lac_20250730_041_log.txt          10lac_argonneon-18.fits              10lac_argonneon-4.fits               10lac-9.fits                         flat-13.fits                         flat-27.fits
+_10lac_20250730_041.fits             10lac_argonneon-19.fits              10lac_argonneon-5.fits               dark-1.fits                          flat-14.fits                         flat-28.fits
+_10lac_20250730_041.png              10lac_argonneon-2.fits               10lac_argonneon-6.fits               dark-10.fits                         flat-15.fits                         flat-29.fits
+_10lac_20250730_041.yaml             10lac_argonneon-20.fits              10lac_argonneon-7.fits               dark-2.fits                          flat-16.fits                         flat-3.fits
+_dark.fits                           10lac_argonneon-21.fits              10lac_argonneon-8.fits               dark-3.fits                          flat-17.fits                         flat-30.fits
+_flat.fits                           10lac_argonneon-22.fits              10lac_argonneon-9.fits               dark-4.fits                          flat-18.fits                         flat-4.fits
+10lac_argonneon-1.fits               10lac_argonneon-23.fits              10lac-1.fits                         dark-5.fits                          flat-19.fits                         flat-5.fits
+10lac_argonneon-10.fits              10lac_argonneon-24.fits              10lac-10.fits                        dark-6.fits                          flat-2.fits                          flat-6.fits
+10lac_argonneon-11.fits              10lac_argonneon-25.fits              10lac-2.fits                         dark-7.fits                          flat-20.fits                         flat-7.fits
+10lac_argonneon-12.fits              10lac_argonneon-26.fits              10lac-3.fits                         dark-8.fits                          flat-21.fits                         flat-8.fits
+10lac_argonneon-13.fits              10lac_argonneon-27.fits              10lac-4.fits                         dark-9.fits                          flat-22.fits                         flat-9.fits
+10lac_argonneon-14.fits              10lac_argonneon-28.fits              10lac-5.fits                         flat-1.fits                          flat-23.fits                         my_first_10_lac_alpy_finale.fits
+10lac_argonneon-15.fits              10lac_argonneon-29.fits              10lac-6.fits                         flat-10.fits                         flat-24.fits                         processing_config_alpy600.yaml
+10lac_argonneon-16.fits              10lac_argonneon-3.fits               10lac-7.fits                         flat-11.fits                         flat-25.fits                         processing_config_calib_alpy600.yaml
