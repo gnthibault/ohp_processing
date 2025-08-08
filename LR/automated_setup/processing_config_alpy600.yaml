@@ -16,7 +16,6 @@ SIMBAD_NAME:
 - DARK_NB                  # number of dark images, example: 18
 - OFFSET_PREFIX            # generic offset files name, example: o-
 - OFFSET_NB                # number of offset files name, example: 25
-- none                     # optical atmospheric transmission
-- 0                        #
+- INSTRUMENT_RESPONSE      # optical atmospheric transmission
 # *******************************************************
 
