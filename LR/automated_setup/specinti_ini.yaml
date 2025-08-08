@@ -1,9 +1,9 @@
-config_file: conf_alpy600
-obs_file: FULL_PATH_TO_PROCESSING_CONFIG_FILE # Includes .yaml in the name
+config_file: SPECINTI_CONF_FILE #conf_alpy600, no base directory, no yaml extension
+obs_file: FULL_PATH_TO_PROCESSING_CONFIG_FILE # Path to data directory + processing file, includes .yaml in the name
 reponse_dir: ''
-postfix_img: _light_
-postfix_cal: _argonneon-
-prefix_cal: ''
+postfix_img: light
+postfix_cal: _
+prefix_cal: 'spec_calib'
 keep_space: false
 autosave_obs: true
 vspec_dir: ''

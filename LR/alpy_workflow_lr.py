@@ -27,9 +27,9 @@ def setup_logging():
     )
 
 class SetupType(str, Enum):
-    starex_2400 = "starex_2400"
-    alpy_600    = "alpy_600"
-    
+    STAREX_2400 = "starex_2400"
+    ALPY_600    = "alpy_600"
+
 class Mode(str, Enum):
     """
     * raw         : will produce just a calibrated spectra with raw values, so that one can perform diagnostic on
@@ -101,21 +101,24 @@ def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix)
         all_dst_files.append(destination_path)
     return filename_prefix, light_number, all_dst_files
 
-class TemporarySpecintiProcessingDir:
-    def __init__(self):
+class TemporarySpecintiProcessingRessources:
+    def __init__(self,
+                 specinti_install_path):
         self.directory = tempfile.mkdtemp() #tempfile.TemporaryDirectory()
         self.processing_cfg_dict = {}
+        self.specinti_install_path = specinti_install_path
 
     def cleanup(self):
         logging.debug(f"Cleaning up TemporaryThing directory {self.directory}")
         shutil.rmtree(self.directory)
 
 @contextmanager
-def build_temp_processing_dir(src_light_directory, remove=True):
-    processing_dir = TemporarySpecintiProcessingDir()
+def build_temp_processing_dir(src_light_directory, specinti_install_path, remove=True):
+    processing_dir = TemporarySpecintiProcessingRessources(specinti_install_path=specinti_install_path)
     try:
         # Manage lights
-        all_src_light_files = list_all_acquisition_files(src_light_directory=src_light_directory)
+        all_src_light_files = list_all_acquisition_files(
+            src_light_directory=src_light_directory)
         light_prefix, light_number, all_dst_light_files = copy_src_file_to_dest(
             all_src_files=all_src_light_files,
             destination_directory=processing_dir.directory,
@@ -125,7 +128,7 @@ def build_temp_processing_dir(src_light_directory, remove=True):
         # Open first file, and check gain/offset/
         headers = read_fits_header(file_path=all_dst_light_files[0])
 
-        processing_dir.processing_cfg_dict["SIMBAD_NAME"] = 0
+        processing_dir.processing_cfg_dict["SIMBAD_NAME"] = "Atik"
         
         # Manage dark
         processing_dir.processing_cfg_dict["DARK_PREFIX"] = "None"
@@ -163,9 +166,16 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--base_conf",
+        type=Path,
+        default=Path(),
+        help="Path to the base specinti template config yaml file."
+    )
+
+    parser.add_argument(
         "--setup_type",
         choices=list(SetupType),
-        required=True,
+        default=SetupType.ALPY_600,
         help="The instrument setup type."
     )
 
@@ -173,7 +183,7 @@ def parse_args():
         "--mode",
         type=Mode,
         choices=list(Mode),
-        required=True,
+        default=Mode.SCIENCE,
         help="Reduction mode: raw, calibration, or science."
     )
 
@@ -182,6 +192,13 @@ def parse_args():
         action="store_true",
         help="If set, do not execute specinti, just generate the config file."
     )
+
+    parser.add_argument(
+        "--debug_mode",
+        action="store_true",
+        help="If set, execute specinti and keep every intermediate file"
+    )
+
 
     return parser.parse_args()
 
@@ -196,6 +213,19 @@ def write_config_file(config_path, setup_type, mode):
     logging.info(f"Config written to {config_path}")
 
 def run_specinti(specinti_install_path, specinti_path, config_path, dry_run=False):
+    if not specinti_install_path.is_dir():
+        logging.error(f"Invalid path: {specinti_install_path}")
+        sys.exit(1)
+
+    # Edit and write specinti default config file
+    # config_file: SPECINTI_CONF_FILE  # conf_alpy600, no base directory, no yaml extension
+    # obs_file: FULL_PATH_TO_PROCESSING_CONFIG_FILE  # Path to data directory + processing file, includes .yaml in the name
+
+    specinti_binary = specinti_install_path.joinpath("specinti")
+    if not specinti_binary.is_file():
+        logging.error(f"specinti binary not found at: {specinti_binary}")
+        sys.exit(1)
+
     if dry_run:
         logging.info(f"[DRY-RUN] Would run: {specinti_path} {config_path}")
         return
@@ -216,21 +246,17 @@ def main():
     setup_logging()
     args = parse_args()
 
-    # Will yield an object of type TemporarySpecintiProcessingDir
-    with build_temp_processing_dir(src_light_directory, remove=True) as processing_dir:
-        build_specinti_processing_file()
-        build_specinti_config_file()
+    # Will be used to store files and run binary
+    specinti_install_path = args.specinti_install_path.resolve()
 
-        specinti_install_path = args.specinti_install_path.resolve()
+    # Will yield an object of type TemporarySpecintiProcessingRessources
+    with build_temp_processing_dir(src_light_directory, specinti_install_path, remove=True) as processing_res:
+        build_specinti_processing_file(processing_res)
+        build_specinti_config_file(processing_res)
+        run_specinti(specinti_install_path=args.specinti_install_path)
 
-        if not specinti_install_path.is_dir():
-            logging.error(f"Invalid path: {specinti_install_path}")
-            sys.exit(1)
 
-        specinti_binary = specinti_install_path.joinpath("specinti")
-        if not specinti_binary.is_file():
-            logging.error(f"specinti binary not found at: {specinti_binary}")
-            sys.exit(1)
+
 
     # Write processing file
     src_processing_path = Path("./processing_config_alpy600.yaml")
@@ -242,8 +268,6 @@ def main():
     dst_config_path = specinti_install_path.joinpath("runtime_config.yaml")
     write_config_file(config_path, args.setup_type, args.mode)
 
-    # Run actual specinti
-    run_specinti(specinti_install_path, specinti_binary, config_path, dry_run=args.dry_run)
 
 if __name__ == "__main__":
     main()
