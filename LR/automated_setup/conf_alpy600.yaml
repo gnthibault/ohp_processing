@@ -1,0 +1,161 @@
+# ********************************************************************
+# Configuration Sol'Ex basse résolution
+# Mode étalonnage 2
+# Démo specINTI #3
+# ********************************************************************
+# ----------------------------------------------------------------
+# Répertoire de travail
+# ----------------------------------------------------------------
+working_path: WORKING_PATH_WITH_ALL_DATA
+
+# ----------------------------------------------------------------
+# Fichier batch de traitement
+# ----------------------------------------------------------------
+batch_name: processing_config_alpy600
+
+# ----------------------------------------------------------------
+# Mode d'étalonnage spectral
+# See https://solex.astrosurf.com/spevinti6_fr.html
+# ----------------------------------------------------------------
+
+# Normalement, l’angle de tilt (inclinaison) de la trace du spectre est déterminée automatiquement par le specINTI
+#tilt: -0.021 # Angle de tilt typique relevé sur la trace des spectres (optionnel)
+#smile_radius: -17000 # Rayon de courbure du smille (optionnel, mais recommandé)
+calib_coef: [-2.4575161937562447e-08, 6.260981012201466e-05, 2.0188808231270405, 2214.358564308622]
+
+# Pas d'estimation de la resolution, seul le calib_coef est utilise. power_res obligatoire seulement si calib_mode = 1
+calib_mode: 1
+power_res: 600
+
+# In case you want to re-estimate the A0 calibration term at every image
+#calib_mode: 2
+#wavelength: [3948.98, 4200.67, 4510.73, 4764.87, 5852.49, 6143.06, 6402.25, 6677.28, 6965.43, 7067.22, 7272.94, 7503.87, 7635.11]
+#line_pos: [843, 970, 1117, 1245, 1773, 1920, 2053, 2191, 2345, 2397, 2504, 2631, 2700]
+
+
+# Additional customizations
+#  shift_vel: Décalage spectral du profil spectral final d’une certaine quantité en km/s. Peut corriger un décalage
+#  Doppler, par exemple.
+# CORR_TOPO : Paramètre optionnel. Si ce paramètre est présent, le logiciel calcule la vitesse radiale topocentrique
+#  de l’observateur vis-à-vis de l’objet. Le calcul tiens compte des coordonnées géographiques de l’observateur à la
+#  surface de la Terre (les paramètres longitude, latitude et altitude deviennent obligatoire), et bien sur de la
+#  rotation de la Terre autour du Soleil. La précision interne de calcul est de l’ordre du centimètre par seconde (il
+# est donc très précis).
+spectral_shift_wave: 0
+spectral_shift_vel : 0
+corr_topo: 0
+
+# ----------------------------------------------------------------
+# Largeur de binning
+# ----------------------------------------------------------------
+bin_size: 22
+
+# ---------------------------------------------------
+# SKY: Paramètre obligatoire. Jeu de coordonnées en pixels suivant l’axe spatial (vertical)  délimitant deux zones de
+#      calcul du signal du fond de ciel de part et d’autres de la trace du spectre. Ces coordonnées sont relatives à
+#      la coordonnée verticale de la trace du spectre. Le format des données du paramètres est [y1, y2, y3, Y3]
+#
+# SKY_MODE : Paramètre optionnel. Choix de la méthode utilisée pour retirer le fond de ciel.
+#            Si le paramètre vaut 0 (valeur par défaut), pour chaque colonne indépendamment, le logiciel calcule l’intensité
+#            médiane dans les zones d’évaluation du fond de ciel et soustrait cette valeur de la colonne. Si le
+#            paramètre est 1, le logiciel ajuste un polynôme de Legendre au travers de l’intensité du fond de ciel  dans les zones de
+#            d’évaluation, puis soustrait la valeur interpolée à la trace du spectre le long de la colonne en question.
+#            Cette dernière technique est généralement plus précise, mais aussi plus lente en temps d’exécution.
+#
+# SKY_REMOVE : Paramètre optionnel. Si la valeur est 0, le fond de ciel n’est pas retiré des images (utile pour
+#              certaines observations de nébuleuses par exemple). Si la valeur est 1 (valeur par défaut, quasiment
+#              toujours adoptée), le fond de ciel est retiré (voir le paramètre sky_mode).
+# ----------------------------------------------------------------
+sky: [160, 30, 30, 160]
+sky_mode: 1
+sky_remove: 1
+
+# ----------------------------------------------------------------
+# Nom du fichier de réponse instrumentale
+# ----------------------------------------------------------------
+# instrumental_response: _rep
+
+# --------------------------------------------------------------------
+# Température de couleur de la lampe tungstène utilisee pour les flat
+# -------------------------------------------------------------------
+planck: 2900
+
+# ------------------------------------------------------------------
+# Correction de la transmission atmosphérique
+# see https://solex.astrosurf.com/spevinti6_fr.html
+# Le paramètre est la valeur du AOD (transparence de l’atmosphère aux aérosols).
+# Rappel : un air très sec de montage correspond à un AOD de 0.02 et pour un désert
+# sec le AOD vaut 0.04. En France, le AOD est de 0,07 en hiver, de 0,21 en été,
+# et en moyenne sur l'année de 0,13.
+# ------------------------------------------------------------------
+simbad: 1        # To compute the height of the object
+corr_atmo: 0.13  # Some value to be adapted according to period/location
+
+# -------------------------------------------------------------------
+# Bornes en x pour les mesures géométriques
+# ------------------------------------------------------------------
+xlimit: [900, 2500]
+
+# ----------------------------------------------------------------
+# Zone de normalisation à l'unité en A
+# ----------------------------------------------------------------
+norm_wave: [6620, 6640]
+
+# ----------------------------------------------------------------
+# Zone de cropping du profil
+# ----------------------------------------------------------------
+crop_wave: [3700, 7400]
+
+
+# ----------------------------------------------------------------
+# From https://solex.astrosurf.com/spevinti6_fr.html
+# EXTRACT_MODE : Paramètre optionnel. Si la valeur est nulle (valeur par défaut), specINTI extrait le profil
+#                spectral brut des images spectrales 2D en réalisation une simple addition colonnes après colonnes
+#                dans la largeur bin_size. C’est une méthode expéditive qui convient pour les objets brillants. Si le
+#                signal du spectre est très peu intense par rapport au bruit, il est préférable d’employer une méthode
+#                d’extraction optimale qui réduit significativement le bruit dans le profil en effectuant une addition
+#                pondéré. L’algorithme élimine aussi les rayons cosmiques pouvant se trouver dans la zone de binning
+#                lors d’un processus itératif (Keith Horne ,1986;  "An Optimal Extraction Algoritm for CCD
+#                Spectroscopy", PASP v. 98, p. 609). On active l’extraction optimale en donnant la valeur 1 au paramètre.
+#
+# NOISE : Paramètre optionnel, sauf si extract_mode = 1. Fourni au logiciel la valeur du bruit de lecture du détecteur en électrons.
+# GAIN  : Paramètre optionnel, sauf si extract_mode = 1. Gain électronique de la caméra en électrons / ADU.
+# ----------------------------------------------------------------
+#extract_mode: 1
+#gain: 0.083
+#noise: 1.3
+
+# ----------------------------------------------------------------
+# Motif de filtrage médian
+# 0: pas de filtrage, sinon: 3, 5, ...
+# Valeur négative : optimisé pour le bruit impusionnel
+# ----------------------------------------------------------------
+#kernel_size: -3
+
+# ----------------------------------------------------------------
+# Filtrage gaussien
+# ----------------------------------------------------------------
+#sigma_gauss: 0.4
+
+# ----------------------------------------------------------------
+# Longitude/Latitude/Altitude/Nom du lieu d'observation
+# ----------------------------------------------------------------
+Longitude: 5.7106521
+Latitude: 43.9346298
+Altitude: 650
+Site: OHP
+
+# ----------------------------------------------------------------
+# Description de l'instrument + PI
+# ----------------------------------------------------------------
+Inst: Newton200 + Alpy600 + PlayerOne533MM
+Observer: gnthibault
+
+# ------------------------------------------------------------------------
+# Extension des fichiers FITS (0 -> .fits, 1 - > fit)
+# ------------------------------------------------------------------------
+file_extension: 0
+# ------------------------------------------------------------------------
+# Generate intermediate files
+# ------------------------------------------------------------------------
+check_mode: 0

@@ -1,0 +1,10 @@
+config_file: conf_alpy600
+obs_file: FULL_PATH_TO_PROCESSING_CONFIG_FILE # Includes .yaml in the name
+reponse_dir: ''
+postfix_img: _light_
+postfix_cal: _argonneon-
+prefix_cal: ''
+keep_space: false
+autosave_obs: true
+vspec_dir: ''
+lang: Fr

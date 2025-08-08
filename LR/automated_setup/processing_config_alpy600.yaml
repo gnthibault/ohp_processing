@@ -1,0 +1,22 @@
+# See documentation from https://solex.astrosurf.com/spevinti6_fr.html
+# Keep in mind that after prefix, NO ZERO PADDING SHOULD BE ADDED TO YOU FILE NAMES
+# Vous pouvez copier les fichiers maîtres (_offset, _dark, _flat, et _rep) d'un répertoire d'observation à un autre
+#  pour les réutiliser sans les recalculer, ce qui fait gagner beaucoup de temps.
+# *******************************************************
+SIMBAD_NAME:
+# *******************************************************
+- SIMBAD_NAME              # catalog name, example: Altair
+- LIGHT_PREFIX             # generic target file name, example: altair-
+- LIGHT_NB                 # number of target spectral images, example: 13
+- SPEC_CALIB_PREFIX        # generic spectral lamp files name, example: altair_neon-
+- SPEC_CALIB_NB            # number of spectral lamp images, example: 1
+- SPEC_FLAT_PREFIX         # generic flat lamp files name, example: altair_tung-
+- SPEC_FLAT_NB             # number of flat images, example: 18
+- DARK_PREFIX              # generic dark files name, example: n900-
+- DARK_NB                  # number of dark images, example: 18
+- OFFSET_PREFIX            # generic offset files name, example: o-
+- OFFSET_NB                # number of offset files name, example: 25
+- none                     # optical atmospheric transmission
+- 0                        #
+# *******************************************************
+

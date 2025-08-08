@@ -78,7 +78,7 @@ def write_config_file(config_path, setup_type, mode):
         yaml.dump(config, f)
     logging.info(f"Config written to {config_path}")
 
-def run_specinti(specinti_path, config_path, dry_run=False):
+def run_specinti(specinti_install_path, specinti_path, config_path, dry_run=False):
     if dry_run:
         logging.info(f"[DRY-RUN] Would run: {specinti_path} {config_path}")
         return
@@ -87,6 +87,7 @@ def run_specinti(specinti_path, config_path, dry_run=False):
         logging.info(f"Executing: {specinti_path} {config_path}")
         subprocess.run(
             [str(specinti_path), str(config_path)],
+            cwd=specinti_install_path,
             check=True
         )
         logging.info("specinti executed successfully.")
@@ -111,7 +112,7 @@ def main():
 
     config_path = os.path.join(specinti_install_path, "runtime_config.yaml")
     write_config_file(config_path, args.setup_type, args.mode)
-    run_specinti(specinti_binary, config_path, dry_run=args.dry_run)
+    run_specinti(specinti_install_path, specinti_binary, config_path, dry_run=args.dry_run)
 
 if __name__ == "__main__":
     main()
