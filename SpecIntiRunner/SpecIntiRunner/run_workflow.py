@@ -58,6 +58,8 @@ def read_fits_header(file_path):
     return res
 
 def list_matching_files(directory, pattern):
+    if directory is None:
+        return []
     regex = re.compile(pattern)
     matched_files = []
     for entry in os.listdir(directory):
@@ -66,7 +68,7 @@ def list_matching_files(directory, pattern):
             matched_files.append(full_path)
     return matched_files
 
-def list_all_acquisition_files(src_light_directory):
+def list_all_acquisition_files(src_directory):
     """
         # \d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3])[0-5]\d[0-5]\d\.fits
         # Explanation:
@@ -86,16 +88,18 @@ def list_all_acquisition_files(src_light_directory):
         # [0-5]\d: Matches the second (SS) from 00 to 59.
         # \.fits: Matches the literal string ".fits" at the end of the filename. The \ is used to escape the . character, as . has a special meaning in regular expressions (it matches any character).
     """
-    all_light_files = list_matching_files(
-        directory=src_light_directory,
+    all_files = list_matching_files(
+        directory=src_directory,
         pattern="\d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3])[0-5]\d[0-5]\d\.fits"
     )
-    return all_light_files
+    return all_files
 
 def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix):
     if not os.path.isdir(destination_directory):
         raise NotADirectoryError(f"Destination is not a directory: {destination_directory}")
     light_number = len(all_src_files)
+    if light_number == 0:
+        filename_prefix = "None"
     all_dst_files = []
     for index, src_file in enumerate(all_src_files, start=1):
         new_file_name = f"{filename_prefix}{index}.fits"
@@ -107,34 +111,53 @@ def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix)
     return filename_prefix, light_number, all_dst_files
 
 @contextmanager
-def build_temp_processing_dir(src_light_directory, specinti_install_path, remove=True):
+def build_temp_processing_dir(src_directories: dict, specinti_install_path, remove=True):
     processing_res = TemporarySpecintiProcessingRessources(specinti_install_path=specinti_install_path)
     try:
         # Manage lights
         all_src_light_files = list_all_acquisition_files(
-            src_light_directory=src_light_directory)
+            src_directory=src_directories["src_light_directory"])
         light_prefix, light_number, all_dst_light_files = copy_src_file_to_dest(
             all_src_files=all_src_light_files,
             destination_directory=processing_res.directory,
             filename_prefix="light_")
         processing_res.processing_cfg_dict["LIGHT_PREFIX"] = light_prefix
         processing_res.processing_cfg_dict["LIGHT_NB"] = light_number
+
         # Open first file, and check gain/offset/
         headers = read_fits_header(file_path=all_dst_light_files[0])
 
         processing_res.processing_cfg_dict["SIMBAD_NAME"] = headers["FIELD"]
         
         # Manage dark
-        processing_res.processing_cfg_dict["DARK_PREFIX"] = "None"
-        processing_res.processing_cfg_dict["DARK_NB"] = 0
+        all_src_dark_files = list_all_acquisition_files(
+            src_directory=src_directories["src_dark_directory"])
+        dark_prefix, dark_number, all_dst_dark_files = copy_src_file_to_dest(
+            all_src_files=all_src_dark_files,
+            destination_directory=processing_res.directory,
+            filename_prefix="dark_")
+        processing_res.processing_cfg_dict["DARK_PREFIX"] = dark_prefix
+        processing_res.processing_cfg_dict["DARK_NB"] = dark_number
 
         # Manage offset
-        processing_res.processing_cfg_dict["OFFSET_PREFIX"] = "None"
-        processing_res.processing_cfg_dict["OFFSET_NB"] = 0
+        all_src_offset_files = list_all_acquisition_files(
+            src_directory=src_directories["src_offset_directory"])
+        offset_prefix, offset_number, all_dst_offset_files = copy_src_file_to_dest(
+            all_src_files=all_src_offset_files,
+            destination_directory=processing_res.directory,
+            filename_prefix="offset_")
+        processing_res.processing_cfg_dict["OFFSET_PREFIX"] = offset_prefix
+        processing_res.processing_cfg_dict["OFFSET_NB"] = offset_number
 
         # Manage tungsten flat
-        processing_res.processing_cfg_dict["SPEC_FLAT_PREFIX"] = "None"
-        processing_res.processing_cfg_dict["SPEC_FLAT_NB"] = 0
+        all_src_flat_files = list_all_acquisition_files(
+            src_directory=src_directories["src_flat_directory"])
+        flat_prefix, flat_number, all_dst_flat_files = copy_src_file_to_dest(
+            all_src_files=all_src_flat_files,
+            destination_directory=processing_res.directory,
+            filename_prefix="flat_")
+        processing_res.processing_cfg_dict["SPEC_FLAT_PREFIX"] = flat_prefix
+        processing_res.processing_cfg_dict["SPEC_FLAT_NB"] = flat_number
 
         # Manage spectral calibration files
         processing_res.processing_cfg_dict["SPEC_CALIB_PREFIX"] = "None"
@@ -161,6 +184,21 @@ def parse_args():
 
     parser.add_argument(
         "--src_light_directory",
+        type = Path,
+        help = "Path to the directory where the light images are located."
+    )
+    parser.add_argument(
+        "--src_dark_directory",
+        type = Path,
+        help = "Path to the directory where the dark images are located."
+    )
+    parser.add_argument(
+        "--src_offset_directory",
+        type = Path,
+        help = "Path to the directory where the light images are located."
+    )
+    parser.add_argument(
+        "--src_flat_directory",
         type = Path,
         help = "Path to the directory where the light images are located."
     )
@@ -216,10 +254,6 @@ def run_specinti(specinti_install_path: Path, processing_res: TemporarySpecintiP
         logging.error(f"Invalid path (should be a directory): {specinti_install_path}")
         sys.exit(1)
 
-    # Edit and write specinti default config file
-    # config_file: SPECINTI_CONF_FILE  # conf_alpy600, no base directory, no yaml extension
-    # obs_file: FULL_PATH_TO_PROCESSING_CONFIG_FILE  # Path to data directory + processing file, includes .yaml in the name
-
     specinti_binary = specinti_install_path.joinpath("specinti")
     if not specinti_binary.is_file():
         logging.error(f"specinti binary not found at: {specinti_binary}")
@@ -248,10 +282,17 @@ def main():
     # Will be used to store files and run binary
     specinti_install_path = args.specinti_install_path.resolve()
 
+    src_directories = {
+        "src_light_directory" : args.src_light_directory,
+        "src_dark_directory": args.src_dark_directory,
+        "src_offset_directory": args.src_offset_directory,
+        "src_flat_directory": args.src_flat_directory,
+    }
+
     # Will yield an object of type TemporarySpecintiProcessingRessources
-    with build_temp_processing_dir(src_light_directory=args.src_light_directory,
+    with build_temp_processing_dir(src_directories=src_directories,
                                    specinti_install_path=args.specinti_install_path,
-                                   remove=True) as processing_res:
+                                   remove=(not args.debug_mode)) as processing_res:
         build_specinti_processing_file(processing_res)
         build_specinti_config_file(processing_res)
         build_specinti_ini_file(processing_res)
@@ -261,8 +302,12 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Sample usage
-# python spectro_reducer.py /opt/specinti \
-#   --setup_type starex_2400 \
+# # Sample usage
+# PYTHONPATH=. python SpecIntiRunner/run_workflow.py \
+#   --setup_type alpy_600 \
 #   --mode science \
-#   --dry_run
+#   --specinti_install_path /opt/specinti/\
+#   --src_light_directory /opt/RemoteObservatory/images/targets/alphaCrB/012345/20250825T210356/\
+#   --src_dark_directory /home/gnthibault/Documents/DATA/auto_process_test/dark/\
+#   --src_flat_directory /home/gnthibault/Documents/DATA/auto_process_test/flat/\
+#   --debug_mode
