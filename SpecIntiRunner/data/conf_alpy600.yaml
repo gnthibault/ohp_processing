@@ -67,6 +67,7 @@ bin_size: 22
 #              toujours adoptée), le fond de ciel est retiré (voir le paramètre sky_mode).
 # ----------------------------------------------------------------
 sky: [160, 30, 30, 160]
+#sky: [160, 30, 30, 160]
 sky_mode: 1
 sky_remove: 1
 

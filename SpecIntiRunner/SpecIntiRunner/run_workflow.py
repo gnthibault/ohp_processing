@@ -111,8 +111,11 @@ def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix)
     return filename_prefix, light_number, all_dst_files
 
 @contextmanager
-def build_temp_processing_dir(src_directories: dict, specinti_install_path, remove=True):
-    processing_res = TemporarySpecintiProcessingRessources(specinti_install_path=specinti_install_path)
+def build_temp_processing_dir(src_directories: dict, specinti_install_path, debug=True):
+    remove = (debug != True)
+    processing_res = TemporarySpecintiProcessingRessources(
+        specinti_install_path=specinti_install_path,
+        debug=debug)
     try:
         # Manage lights
         all_src_light_files = list_all_acquisition_files(
@@ -292,7 +295,7 @@ def main():
     # Will yield an object of type TemporarySpecintiProcessingRessources
     with build_temp_processing_dir(src_directories=src_directories,
                                    specinti_install_path=args.specinti_install_path,
-                                   remove=(not args.debug_mode)) as processing_res:
+                                   debug=args.debug_mode) as processing_res:
         build_specinti_processing_file(processing_res)
         build_specinti_config_file(processing_res)
         build_specinti_ini_file(processing_res)

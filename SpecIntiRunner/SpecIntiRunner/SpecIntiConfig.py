@@ -13,13 +13,15 @@ import yaml
 
 class TemporarySpecintiProcessingRessources:
     def __init__(self,
-                 specinti_install_path):
+                 specinti_install_path,
+                 debug=False):
         self.directory = tempfile.mkdtemp() #tempfile.TemporaryDirectory()
         self.processing_cfg_dict = {}
         self.config_file = None
         self.ini_file = None
         self.processing_file = None
         self.specinti_install_path = specinti_install_path
+        self.debug = debug
 
     def cleanup(self):
         logging.debug(f"Cleaning up TemporaryThing directory {self.directory}")
@@ -104,6 +106,11 @@ def build_specinti_config_file(processing_res: TemporarySpecintiProcessingRessou
         updated_config_yaml = template_update(updated_config_yaml,
                                             "PROCESSING_FILE",
                                             processing_res.processing_file.stem)
+        # Change directly values / not templated
+        if processing_res.debug:
+            updated_config_yaml["check_mode"] = 1
+
+        # Now save
         save_yaml(updated_config_yaml, dest_config_file)
         processing_res.config_file = dest_config_file
 
