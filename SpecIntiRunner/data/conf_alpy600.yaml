@@ -11,7 +11,7 @@ working_path: WORKING_PATH_WITH_ALL_DATA
 # ----------------------------------------------------------------
 # Fichier batch de traitement
 # ----------------------------------------------------------------
-batch_name: processing_config_alpy600
+batch_name: PROCESSING_FILE
 
 # ----------------------------------------------------------------
 # Mode d'étalonnage spectral

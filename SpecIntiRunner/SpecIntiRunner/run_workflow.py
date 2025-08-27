@@ -13,12 +13,18 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import yaml
 
 # Astropy
 from astropy.io import fits
 
+# Local
+from SpecIntiRunner.SpecIntiConfig import (
+    build_specinti_config_file,
+    build_specinti_ini_file,
+    build_specinti_processing_file,
+    TemporarySpecintiProcessingRessources
+)
 
 def setup_logging():
     logging.basicConfig(
@@ -57,7 +63,7 @@ def list_matching_files(directory, pattern):
     for entry in os.listdir(directory):
         full_path = os.path.join(directory, entry)
         if os.path.isfile(full_path) and regex.search(entry):
-            matched_files.append(entry)
+            matched_files.append(full_path)
     return matched_files
 
 def list_all_acquisition_files(src_light_directory):
@@ -80,7 +86,6 @@ def list_all_acquisition_files(src_light_directory):
         # [0-5]\d: Matches the second (SS) from 00 to 59.
         # \.fits: Matches the literal string ".fits" at the end of the filename. The \ is used to escape the . character, as . has a special meaning in regular expressions (it matches any character).
     """
-
     all_light_files = list_matching_files(
         directory=src_light_directory,
         pattern="\d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3])[0-5]\d[0-5]\d\.fits"
@@ -88,71 +93,60 @@ def list_all_acquisition_files(src_light_directory):
     return all_light_files
 
 def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix):
+    if not os.path.isdir(destination_directory):
+        raise NotADirectoryError(f"Destination is not a directory: {destination_directory}")
     light_number = len(all_src_files)
     all_dst_files = []
     for index, src_file in enumerate(all_src_files):
         new_file_name = f"{filename_prefix}{index}.fits"
         if not os.path.isfile(src_file):
             raise FileNotFoundError(f"Source file does not exist: {src_file}")
-        if not os.path.isdir(destination_directory):
-            raise NotADirectoryError(f"Destination is not a directory: {destination_directory}")
         destination_path = os.path.join(destination_directory, new_file_name)
         shutil.copy2(src_file, destination_path)  # copy2 preserves metadata
         all_dst_files.append(destination_path)
     return filename_prefix, light_number, all_dst_files
 
-class TemporarySpecintiProcessingRessources:
-    def __init__(self,
-                 specinti_install_path):
-        self.directory = tempfile.mkdtemp() #tempfile.TemporaryDirectory()
-        self.processing_cfg_dict = {}
-        self.specinti_install_path = specinti_install_path
-
-    def cleanup(self):
-        logging.debug(f"Cleaning up TemporaryThing directory {self.directory}")
-        shutil.rmtree(self.directory)
-
 @contextmanager
 def build_temp_processing_dir(src_light_directory, specinti_install_path, remove=True):
-    processing_dir = TemporarySpecintiProcessingRessources(specinti_install_path=specinti_install_path)
+    processing_res = TemporarySpecintiProcessingRessources(specinti_install_path=specinti_install_path)
     try:
         # Manage lights
         all_src_light_files = list_all_acquisition_files(
             src_light_directory=src_light_directory)
         light_prefix, light_number, all_dst_light_files = copy_src_file_to_dest(
             all_src_files=all_src_light_files,
-            destination_directory=processing_dir.directory,
+            destination_directory=processing_res.directory,
             filename_prefix="light_")
-        processing_dir.processing_cfg_dict["LIGHT_PREFIX"] = light_prefix
-        processing_dir.processing_cfg_dict["LIGHT_NB"] = light_number
+        processing_res.processing_cfg_dict["LIGHT_PREFIX"] = light_prefix
+        processing_res.processing_cfg_dict["LIGHT_NB"] = light_number
         # Open first file, and check gain/offset/
         headers = read_fits_header(file_path=all_dst_light_files[0])
 
-        processing_dir.processing_cfg_dict["SIMBAD_NAME"] = "Atik"
+        processing_res.processing_cfg_dict["SIMBAD_NAME"] = headers["FIELD"]
         
         # Manage dark
-        processing_dir.processing_cfg_dict["DARK_PREFIX"] = "None"
-        processing_dir.processing_cfg_dict["DARK_NB"] = 0
+        processing_res.processing_cfg_dict["DARK_PREFIX"] = "None"
+        processing_res.processing_cfg_dict["DARK_NB"] = 0
 
         # Manage offset
-        processing_dir.processing_cfg_dict["OFFSET_PREFIX"] = "None"
-        processing_dir.processing_cfg_dict["OFFSET_NB"] = 0
+        processing_res.processing_cfg_dict["OFFSET_PREFIX"] = "None"
+        processing_res.processing_cfg_dict["OFFSET_NB"] = 0
 
         # Manage tungsten flat
-        processing_dir.processing_cfg_dict["SPEC_FLAT_PREFIX"] = "None"
-        processing_dir.processing_cfg_dict["SPEC_FLAT_NB"] = 0
+        processing_res.processing_cfg_dict["SPEC_FLAT_PREFIX"] = "None"
+        processing_res.processing_cfg_dict["SPEC_FLAT_NB"] = 0
 
         # Manage spectral calibration files
-        processing_dir.processing_cfg_dict["SPEC_CALIB_PREFIX"] = "None"
-        processing_dir.processing_cfg_dict["SPEC_CALIB_NB"] = 0
+        processing_res.processing_cfg_dict["SPEC_CALIB_PREFIX"] = "None"
+        processing_res.processing_cfg_dict["SPEC_CALIB_NB"] = 0
 
         # Manage reference response file
-        processing_dir.processing_cfg_dict["INSTRUMENT_RESPONSE"] = "None"
+        processing_res.processing_cfg_dict["INSTRUMENT_RESPONSE"] = "None"
 
-        yield processing_dir.processing_cfg_dict
+        yield processing_res
     finally:
         if remove:
-            processing_dir.cleanup()
+            processing_res.cleanup()
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -163,6 +157,12 @@ def parse_args():
         "--specinti_install_path",
         type=Path,
         help="Path to the directory where specinti is installed."
+    )
+
+    parser.add_argument(
+        "--src_light_directory",
+        type = Path,
+        help = "Path to the directory where the light images are located."
     )
 
     parser.add_argument(
@@ -199,22 +199,21 @@ def parse_args():
         help="If set, execute specinti and keep every intermediate file"
     )
 
-
     return parser.parse_args()
 
-def write_config_file(config_path, setup_type, mode):
-    config = {
-        "setup_type": setup_type,
-        "mode": mode
-    }
+# def write_config_file(config_path, setup_type, mode):
+#     config = {
+#         "setup_type": setup_type,
+#         "mode": mode
+#     }
+#
+#     with open(config_path, "w") as f:
+#         yaml.dump(config, f)
+#     logging.info(f"Config written to {config_path}")
 
-    with open(config_path, "w") as f:
-        yaml.dump(config, f)
-    logging.info(f"Config written to {config_path}")
-
-def run_specinti(specinti_install_path, specinti_path, config_path, dry_run=False):
+def run_specinti(specinti_install_path: Path, processing_res: TemporarySpecintiProcessingRessources, dry_run=False):
     if not specinti_install_path.is_dir():
-        logging.error(f"Invalid path: {specinti_install_path}")
+        logging.error(f"Invalid path (should be a directory): {specinti_install_path}")
         sys.exit(1)
 
     # Edit and write specinti default config file
@@ -227,13 +226,13 @@ def run_specinti(specinti_install_path, specinti_path, config_path, dry_run=Fals
         sys.exit(1)
 
     if dry_run:
-        logging.info(f"[DRY-RUN] Would run: {specinti_path} {config_path}")
+        logging.info(f"[DRY-RUN] Would run: {specinti_binary} {processing_res.config_file}")
         return
 
     try:
-        logging.info(f"Executing: {specinti_path} {config_path}")
+        logging.info(f"Executing: {specinti_binary} {processing_res.config_file}")
         subprocess.run(
-            [str(specinti_path), str(config_path)],
+            [str(specinti_binary), processing_res.config_file.stem],
             cwd=specinti_install_path,
             check=True
         )
@@ -250,23 +249,13 @@ def main():
     specinti_install_path = args.specinti_install_path.resolve()
 
     # Will yield an object of type TemporarySpecintiProcessingRessources
-    with build_temp_processing_dir(src_light_directory, specinti_install_path, remove=True) as processing_res:
+    with build_temp_processing_dir(src_light_directory=args.src_light_directory,
+                                   specinti_install_path=args.specinti_install_path,
+                                   remove=True) as processing_res:
         build_specinti_processing_file(processing_res)
         build_specinti_config_file(processing_res)
-        run_specinti(specinti_install_path=args.specinti_install_path)
-
-
-
-
-    # Write processing file
-    src_processing_path = Path("./processing_config_alpy600.yaml")
-    dst_processing_path = specinti_install_path.joinpath("runtime_config.yaml")
-    write_processing_file(src_processing_path, dst_processing_path)
-
-    # Write config file
-    src_config_path = Path("./conf_alpy600.yaml")
-    dst_config_path = specinti_install_path.joinpath("runtime_config.yaml")
-    write_config_file(config_path, args.setup_type, args.mode)
+        build_specinti_ini_file(processing_res)
+        run_specinti(specinti_install_path=args.specinti_install_path, processing_res=processing_res)
 
 
 if __name__ == "__main__":
