@@ -85,6 +85,9 @@ def build_specinti_processing_file(processing_res: TemporarySpecintiProcessingRe
         updated_config_yaml = template_update(updated_config_yaml,
                                             "OFFSET_NB",
                                             processing_res.processing_cfg_dict["OFFSET_NB"])# number of offset files name, example: 25
+        updated_config_yaml = template_update(updated_config_yaml,
+                                            "INSTRUMENT_RESPONSE",
+                                            processing_res.processing_cfg_dict["INSTRUMENT_RESPONSE"])
         save_yaml(updated_config_yaml, dest_processing_file)
         processing_res.processing_file = dest_processing_file
 
@@ -99,8 +102,8 @@ def build_specinti_config_file(processing_res: TemporarySpecintiProcessingRessou
                                             "WORKING_PATH_WITH_ALL_DATA",
                                             processing_res.directory)
         updated_config_yaml = template_update(updated_config_yaml,
-                                            "SPECINTI_CONF_FILE",
-                                            processing_res.directory)
+                                            "PROCESSING_FILE",
+                                            processing_res.processing_file.stem)
         save_yaml(updated_config_yaml, dest_config_file)
         processing_res.config_file = dest_config_file
 
@@ -108,7 +111,7 @@ def build_specinti_config_file(processing_res: TemporarySpecintiProcessingRessou
 def template_update(data, search_value, replace_value):
     """Recursively search and replace values inside a YAML data structure."""
     if isinstance(data, dict):
-        return {k: template_update(v, search_value, replace_value) for k, v in data.items()}
+        return {template_update(k, search_value, replace_value): template_update(v, search_value, replace_value) for k, v in data.items()}
     elif isinstance(data, list):
         return [template_update(item, search_value, replace_value) for item in data]
     elif data == search_value:

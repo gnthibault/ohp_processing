@@ -97,7 +97,7 @@ def copy_src_file_to_dest(all_src_files, destination_directory, filename_prefix)
         raise NotADirectoryError(f"Destination is not a directory: {destination_directory}")
     light_number = len(all_src_files)
     all_dst_files = []
-    for index, src_file in enumerate(all_src_files):
+    for index, src_file in enumerate(all_src_files, start=1):
         new_file_name = f"{filename_prefix}{index}.fits"
         if not os.path.isfile(src_file):
             raise FileNotFoundError(f"Source file does not exist: {src_file}")
